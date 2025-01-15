@@ -14,8 +14,11 @@
 
 using namespace std;
 
-std::string vector_to_json(const std::vector<int>& vec) {
-    std::ostringstream oss;
+/*
+Methods for converting vectors to JSON (these vectors represent the degree combinations for the sum of squares polynomials in the decomposition, which is why they are vectors of integers).
+*/
+string vector_to_json(const vector<int>& vec) {
+    ostringstream oss;
     oss << "[";
     for (size_t i = 0; i < vec.size(); ++i) {
         if (i > 0) {
@@ -27,8 +30,8 @@ std::string vector_to_json(const std::vector<int>& vec) {
     return oss.str();
 }
 
-std::string vector_of_vectors_to_json(const std::vector<std::vector<int>>& vec) {
-    std::ostringstream oss;
+string vector_of_vectors_to_json(const vector<vector<int>>& vec) {
+    ostringstream oss;
     oss << "[";
     for (size_t i = 0; i < vec.size(); ++i) {
         oss << vector_to_json(vec[i]);
@@ -40,8 +43,8 @@ std::string vector_of_vectors_to_json(const std::vector<std::vector<int>>& vec) 
     return oss.str();
 }
 
-std::string vector_of_vector_of_vectors_to_json(const std::vector<std::vector<std::vector<int>>>& vec) {
-    std::ostringstream oss;
+string vector_of_vector_of_vectors_to_json(const vector<vector<vector<int>>>& vec) {
+    ostringstream oss;
     oss << "[";
     for (size_t i = 0; i < vec.size(); ++i) {
         oss << vector_of_vectors_to_json(vec[i]);
@@ -53,20 +56,23 @@ std::string vector_of_vector_of_vectors_to_json(const std::vector<std::vector<st
     return oss.str();
 }
 
-std::string vector_to_json(const std::vector<std::pair<float, std::vector<int>>>& vec) {
-    std::ostringstream oss;
+/*
+Methods for converting vectors to JSON (these vectors represent polynomials, which is why they are vectors of coefficient-monomial tuples  in the case of polynomial f, and vector of vectors of coefficient-monomial tuples, i.e. vector of polynomials, in the case of g=g₁, ..., gₛ).
+*/
+string vector_to_json(const vector<pair<float, vector<int>>>& vec) {
+    ostringstream oss;
     oss << "[";
 
     for (size_t i = 0; i < vec.size(); ++i) {
-        const auto& [coef, monomio] = vec[i];
+        const auto& [coef, monomial] = vec[i];
 
         oss << "[" << coef << ",[";
 
-        for (size_t j = 0; j < monomio.size(); ++j) {
+        for (size_t j = 0; j < monomial.size(); ++j) {
             if (j > 0) {
                 oss << ",";
             }
-            oss << monomio[j];
+            oss << monomial[j];
         }
         oss << "]]";
 
@@ -78,21 +84,12 @@ std::string vector_to_json(const std::vector<std::pair<float, std::vector<int>>>
     return oss.str();
 }
 
-std::string vector_of_vectors_to_json(const std::vector<std::vector<std::pair<float, std::vector<int>>>>& vec) {
-    std::ostringstream oss;
+string vector_of_vectors_to_json(const vector<vector<pair<float, vector<int>>>>& vec) {
+    ostringstream oss;
     oss << "[";
     for (size_t i = 0; i < vec.size(); ++i) {
         const auto& inner_vec = vec[i];
-        std::cout << "Subvector " << i << ":" << std::endl;
-        for (const auto& [coef, monomio] : inner_vec) {
-            std::cout << "  Coeficiente: " << coef << ", Monomio: [";
-            for (size_t j = 0; j < monomio.size(); ++j) {
-                if (j > 0) std::cout << ", ";
-                std::cout << monomio[j];
-            }
-            std::cout << "]" << std::endl;       
-	}
-
+	
 	oss << vector_to_json(inner_vec);
         if (i < vec.size() - 1) {
             oss << ",";
@@ -102,26 +99,32 @@ std::string vector_of_vectors_to_json(const std::vector<std::vector<std::pair<fl
     return oss.str();
 }
 
-std::string run_command(const std::string& command) {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
+/*
+Method for communicating C++ and Python
+*/
+string run_command(const string& command) {
+    array<char, 128> buffer;
+    string result;
+    unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
     if (!pipe) {
-        throw std::runtime_error("popen() failed!");
+        throw runtime_error("popen() failed!");
     }
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
         result += buffer.data();
     }
-    //std::cout << result << std::endl;
+    
     return result;
 }
 
-std::vector<std::vector<int>> generate_monomials(int n_variables, int deg) {
-    std::vector<std::vector<int>> monomials;
-    std::vector<int> current(n_variables, 0);  // Inicializar con ceros
+/*
+Method for generating all monomials of n_variables variables with a degree less than or equal to deg.
+*/
+vector<vector<int>> generate_monomials(int n_variables, int deg) {
+    vector<vector<int>> monomials;
+    vector<int> current(n_variables, 0); 
     
     while (true) {
-        if (std::accumulate(current.begin(), current.end(), 0) <= deg) {
+        if (accumulate(current.begin(), current.end(), 0) <= deg) {
             monomials.push_back(current);
         }
 
@@ -135,15 +138,18 @@ std::vector<std::vector<int>> generate_monomials(int n_variables, int deg) {
         }
 
         ++current[index];
-        std::fill(current.begin() + index + 1, current.end(), 0);
+        fill(current.begin() + index + 1, current.end(), 0);
     }
 
     return monomials;
 }
 
-std::vector<std::vector<int>> generate_combinations(int max_deg, int len) {
-    std::vector<std::vector<int>> combinations;
-    std::vector<int> current(len, 0);  
+/*
+Method for generating all degree combinations of the polynomials σ₁, ..., σₛ. Combinations of as many numbers as len, with a degree less than or equal to max_deg for each individual one. Unlike the previous method, the degree restriction is individual, not based on the monomial (the sum). These could be unified into a single method with a third boolean parameter, but this approach is clearer.
+*/
+vector<vector<int>> generate_combinations(int len, int max_deg) {
+    vector<vector<int>> combinations;
+    vector<int> current(len, 0);  
     
     while (true) {
         combinations.push_back(current);  
@@ -158,20 +164,23 @@ std::vector<std::vector<int>> generate_combinations(int max_deg, int len) {
         }
 
         ++current[index];
-        std::fill(current.begin() + index + 1, current.end(), 0);
+        fill(current.begin() + index + 1, current.end(), 0);
     }
 
     return combinations;
 }
 
-std::vector<std::vector<std::vector<std::vector<int>>>> initialize_vectors(const std::vector<std::vector<int>>& combinations, int n_variables) {
-    std::vector<std::vector<std::vector<std::vector<int>>>> result;
+/*
+Method that returns the vectors vd₁, ..., vdₛ for all degree combinations σ₁, ..., σₛ. Specifically, it produces a structure of the form [a, b, c, ...], where each letter represents a vector containing the vectors vd₁, ..., vdₛ associated with a specific degree combination. Each vector vdᵢ is a vector of integer vectors representing the monomials of n variables with a degree less than or equal to a given value (e.g. vdᵢ = [[0,0], [0,1], [1,0], [1,1], ...], where each element of the outer vector corresponds to a monomial).
+*/
+vector<vector<vector<vector<int>>>> initialize_vectors(const vector<vector<int>>& combinations, int n_variables) {
+    vector<vector<vector<vector<int>>>> result;
 
     for (const auto& comb : combinations) {
-        std::vector<std::vector<std::vector<int>>> vd;
+        vector<vector<vector<int>>> vd;
 
         for (int degree : comb) {
-            std::vector<std::vector<int>> monomials = generate_monomials(n_variables, degree);
+            vector<vector<int>> monomials = generate_monomials(n_variables, degree);
             vd.push_back(monomials);
         }
 
@@ -181,53 +190,59 @@ std::vector<std::vector<std::vector<std::vector<int>>>> initialize_vectors(const
     return result;
 }
 
-void print_combinations(const std::vector<std::vector<int>>& combinations) {
-    std::cout << "{";
+/*
+Methods for printing
+*/
+void print_combinations(const vector<vector<int>>& combinations) {
+    cout << "{";
     for (size_t i = 0; i < combinations.size(); ++i) {
-        std::cout << "{";
+        cout << "{";
         for (size_t j = 0; j < combinations[i].size(); ++j) {
-            std::cout << combinations[i][j];
-            if (j < combinations[i].size() - 1) std::cout << ", ";
+            cout << combinations[i][j];
+            if (j < combinations[i].size() - 1) cout << ", ";
         }
-        std::cout << "}";
-        if (i < combinations.size() - 1) std::cout << ", ";
+        cout << "}";
+        if (i < combinations.size() - 1) cout << ", ";
     }
-    std::cout << "}" << std::endl;
+    cout << "}" << endl;
 }
 
-void print_vectors(const std::vector<std::vector<std::vector<std::vector<int>>>>& vectors) {
+void print_vectors(const vector<vector<vector<vector<int>>>>& vectors) {
     for (size_t i = 0; i < vectors.size(); ++i) {
-        std::cout << "vd" << (i + 1) << ":\n";
+        cout << "vd" << (i + 1) << ":\n";
         for (const auto& vd : vectors[i]) {
-            std::cout << "  [";
+            cout << "  [";
             for (size_t j = 0; j < vd.size(); ++j) {
-                std::cout << "{";
+                cout << "{";
                 for (size_t k = 0; k < vd[j].size(); ++k) {
-                    std::cout << vd[j][k];
-                    if (k < vd[j].size() - 1) std::cout << ", ";
+                    cout << vd[j][k];
+                    if (k < vd[j].size() - 1) cout << ", ";
                 }
-                std::cout << "}";
-                if (j < vd.size() - 1) std::cout << ", ";
+                cout << "}";
+                if (j < vd.size() - 1) cout << ", ";
             }
-            std::cout << "]\n";
+            cout << "]\n";
         }
     }
 }
 
-bool cumpleCondicion(const vector<int>& elem, const vector<int>& parametros) {
-    int n = elem.size();
+/*
+Methods for filtering the degree combinations of the sigmas that can be discarded
+*/
+bool meetsCondition(const vector<int>& combination, const vector<int>& degs_g) {
+    int n = combination.size();
     for (int i = 0; i < n; ++i) {
-        int producto = 2 * elem[i] + parametros[i];
+        int prod = 2 * combination[i] + degs_g[i];
 
-        if (producto > 2) {
-            bool todosMenoresOIguales = true;
+        if (prod > 2) {
+            bool allBelowOrEqual = true;
             for (int j = 0; j < n; ++j) {
-                if (i != j && 2 * elem[j] + parametros[j] >= producto) {
-                    todosMenoresOIguales = false;
+                if (i != j && 2 * combination[j] + degs_g[j] >= prod) {
+                    allBelowOrEqual = false;
                     break;
                 }
             }
-            if (todosMenoresOIguales) {
+            if (allBelowOrEqual) {
                 return true; 
             }
         }
@@ -235,169 +250,182 @@ bool cumpleCondicion(const vector<int>& elem, const vector<int>& parametros) {
     return false; 
 }
 
-void filtrarVector(vector<vector<int>>& vec, const vector<int>& parametros) {
-    vec.erase(remove_if(vec.begin(), vec.end(),
-                        [&](const vector<int>& elem) { return cumpleCondicion(elem, parametros); }),
-              vec.end());
+void filterCombinations(vector<vector<int>>& combinations, const vector<int>& degs_g) {
+    combinations.erase(remove_if(combinations.begin(), combinations.end(),
+                        [&](const vector<int>& comb) { return meetsCondition(comb, degs_g); }),
+              combinations.end());
 }
 
-int calcularGradoMonomio(const vector<int>& monomio) {
-    int grado = 0;
-    for (int exponente : monomio) {
-        grado += exponente;
+/*
+Methods for calculating the degree of a polynomial
+*/
+int calculateMonomialDegree(const vector<int>& monomial) {
+    int degree = 0;
+    for (int exponent : monomial) {
+        degree += exponent;
     }
-    return grado;
+    return degree;
 }
 
-int calcularGradoPolinomio(const vector<pair<float, vector<int>>>& polinomio) {
-    int gradoMax = 0;
-    for (const auto& termino : polinomio) {
-        int gradoTermino = calcularGradoMonomio(termino.second);
-        if (gradoTermino > gradoMax) {
-            gradoMax = gradoTermino;
+int calculatePolynomialDegree(const vector<pair<float, vector<int>>>& polynomial) {
+    int maxDegree = 0;
+    for (const auto& term : polynomial) {
+        int termDegree = calculateMonomialDegree(term.second);
+        if (termDegree > maxDegree) {
+            maxDegree = termDegree;
         }
     }
-    return gradoMax;
+    return maxDegree;
 }
 
 int main() {
-    /*
-    std::vector<std::pair<float, std::vector<int>>> f = {
+    /* ---------------- Examples of input for the polynomials f and g₁, ..., gₛ ----------------
+    (1)
+    vector<pair<float, vector<int>>> f = {
         {2, {0, 0}}, {-1, {2, 0}}, {-1, {0, 2}}
     };
-    std::vector<std::vector<std::pair<float, std::vector<int>>>> g = {
+    vector<vector<pair<float, vector<int>>>> g = {
         {},
         {{1, {3, 0}}, {-1, {0, 2}}},
         {{1, {0, 0}}, {-1, {1, 0}}},
-    };*/
-   /*
-    std::vector<std::pair<float, std::vector<int>>> f = { 
+    };
+    
+    (2)
+    vector<pair<float, vector<int>>> f = { 
         {1, {0, 0}}, {-1, {2, 0}}, {-1, {0, 2}} 
     };
-    std::vector<std::vector<std::pair<float, std::vector<int>>>> g = {
+    vector<vector<pair<float, vector<int>>>> g = {
         {},
         {{1, {1, 0}}},
         {{1, {0, 1}}},
         {{1, {0, 0}}, {-1, {1, 0}}, {-1, {0, 1}}},
-    };*/
-    /*	
-    std::vector<std::pair<float, std::vector<int>>> f = {
+    };
+    
+    (3)
+    vector<pair<float, vector<int>>> f = {
         {2, {0, 0, 0}}, {-1, {2, 0, 0}}, {-1, {0, 2, 0}}
     };
-    std::vector<std::vector<std::pair<float, std::vector<int>>>> g = {
+    vector<vector<pair<float, vector<int>>>> g = {
         {},
         {{1, {0, 0, 0}}, {1, {1, 0, 2}}, {-1, {2, 0, 0}}, {-1, {0, 2, 0}}},
 	{{1, {0, 0, 0}}, {-1, {1, 0, 2}}}
-    };*/
-    /*std::vector<std::pair<float, std::vector<int>>> f = {
+    };
+    
+    (4)
+    vector<pair<float, vector<int>>> f = {
         {5, {0, 0, 0}}, {-1, {2, 0, 0}}, {-1, {0, 2, 0}}, {-1, {0, 0, 2}}
     };
-    std::vector<std::vector<std::pair<float, std::vector<int>>>> g = {
+    vector<vector<pair<float, vector<int>>>> g = {
         {},
         {{1, {1, 0, 0}}},
         {{1, {0, 1, 0}}},
 	{{1, {0, 0, 1}}}
-    };*/
-
-    /*
-    std::vector<std::pair<int, std::vector<int>>> f = { 
+    };
+    
+    (5)
+    vector<pair<float, vector<int>>> f = { 
         {1, {0, 0, 0}}, {-1, {2, 0, 0}}, {-1, {0, 2, 0}}, {-1, {0, 0, 2}} 
     };
-    std::vector<std::vector<std::pair<int, std::vector<int>>>> g = {
+    vector<vector<pair<float, vector<int>>>> g = {
         {},
         {{1, {1, 0, 0}}},
         {{1, {0, 1, 0}}},
 	{{1, {0, 0, 1}}},
         {{1, {0, 0, 0}}, {-1, {1, 0, 0}}, {-1, {0, 1, 0}}, {-1, {0, 0, 1}}},
-    };*/
-    
-    std::vector<std::pair<float, std::vector<int>>> f = { 
-        {4, {0, 0}}, {-1, {2, 0}}, {-1, {0, 2}} 
-    };
-    std::vector<std::vector<std::pair<float, std::vector<int>>>> g = {
-        {},
-        {{1, {1, 0}}, {-1.0f / 2.0f, {0, 0}}},
-        {{1, {0, 1}}, {-1.0f / 2.0f, {0, 0}}},
-        {{1, {0, 0}}, {-1, {1, 1}}},
     };
     
-    /*	
-    std::vector<std::pair<int, std::vector<int>>> f = { 
+    (6)
+    vector<pair<float, vector<int>>> f = { 
         {17, {0, 0, 0}}, {-1, {2, 0, 0}}, {-1, {0, 2, 0}}, {-1, {0, 0, 2}} 
     };
-    std::vector<std::vector<std::pair<int, std::vector<int>>>> g = {
+    vector<vector<pair<float, vector<int>>>> g = {
         {},
         {{1, {1, 0, 0}}, {-1/2, {0, 0, 0}}},
         {{1, {0, 1, 0}}, {-1/2, {0, 0, 0}}},
 	{{1, {0, 0, 1}}, {-1/2, {0, 0, 0}}},
         {{1, {0, 0, 0}}, {-1, {1, 1, 1}}},
     };
-	*/
-
-    int max_deg = 4;   
+    */
+    
+    // ---------------- Input to be modified by the user ----------------
+    int max_deg = 2; // Maximum degree for the vdᵢ's in the decomposition (the maximum degree of the σᵢ's would be 2 * max_deg)
+    vector<pair<float, vector<int>>> f = { 
+        {4, {0, 0}}, {-1, {2, 0}}, {-1, {0, 2}} 
+    };
+    vector<vector<pair<float, vector<int>>>> g = {
+        {},
+        {{1, {1, 0}}, {-1.0f / 2.0f, {0, 0}}},
+        {{1, {0, 1}}, {-1.0f / 2.0f, {0, 0}}},
+        {{1, {0, 0}}, {-1, {1, 1}}},
+    };
+    // ------------------------------------------------------
+    
+    int n_variables = f.empty() ? 0 : f[0].second.size();
     int len = g.size();
-    int n_variables = 2; 
     bool found = false;
-
-    std::vector<std::vector<int>> combinations = generate_combinations(max_deg, len);
+    vector<int> degs_g;
+    string f_str = vector_to_json(f);
+    string g_str = vector_of_vectors_to_json(g);
+    
+    // Generate all possible degree combinations for the vdᵢ
+    vector<vector<int>> combinations = generate_combinations(len, max_deg);
+    cout << combinations.size() << endl;
     //print_combinations(combinations);
-    std::cout << combinations.size() << std::endl;
-
-    vector<int> grados;
-
+    
+    // Calculate the degrees of g₁, ..., gₛ and display them
     for (const auto& polinomio : g) {
-        int grado = polinomio.empty() ? 0 : calcularGradoPolinomio(polinomio);
-        grados.push_back(grado);
+        int grado = polinomio.empty() ? 0 : calculatePolynomialDegree(polinomio);
+        degs_g.push_back(grado);
     }
 
-    cout << "Grados de los polinomios: {";
-    for (size_t i = 0; i < grados.size(); ++i) {
-        cout << grados[i];
-        if (i < grados.size() - 1) cout << ", ";
+    cout << "Degrees of the polynomials gᵢ: {";
+    for (size_t i = 0; i < degs_g.size(); ++i) {
+        cout << degs_g[i];
+        if (i < degs_g.size() - 1) cout << ", ";
     }
     cout << "}" << endl;
+    
+    // Filter the obtained combinations
+    filterCombinations(combinations, degs_g);
+    cout << combinations.size() << endl;
+    
+    // Convert degree combinations of each vdᵢ to the monomial vectors representing them
+    vector<vector<vector<vector<int>>>> vectors = initialize_vectors(combinations, n_variables);
 
-    filtrarVector(combinations, grados);
-    std::cout << combinations.size() << std::endl;
-
-    std::vector<std::vector<std::vector<std::vector<int>>>> vectors = initialize_vectors(combinations, n_variables);
-
-    std::string f_str = vector_to_json(f);
-    std::string g_str = vector_of_vectors_to_json(g);
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    #pragma omp parallel for num_threads(5) 
+    auto start_time = chrono::high_resolution_clock::now();
+    
+    // Iterate through all degree combinations to check if any allows for a sufficiently accurate representation
+    #pragma omp parallel for num_threads(5) // Adjust the number of threads 
     for (size_t i = 0; i < vectors.size(); ++i) {
         #pragma omp cancellation point for
-        std::string vd_str = vector_of_vector_of_vectors_to_json(vectors[i]);
-        std::string command = "python3 QuadraticModule.py " + f_str + " " + g_str + " " + vd_str;
+        string vd_str = vector_of_vector_of_vectors_to_json(vectors[i]);
+        string command = "python3 QuadraticModule.py " + f_str + " " + g_str + " " + vd_str;
         
         try {
-            std::string output = run_command(command);
-            int number = std::stoi(output);
+            string output = run_command(command); // Execute the Python code to search for a representation
+            int number = stoi(output);
 
             int thread_id = omp_get_thread_num();
-            std::cout << "Thread " << thread_id << " Output for vd[" << i << "]: " << output << std::endl;
+            cout << "Thread " << thread_id << " Output for vd[" << i << "]: " << output << endl;
             
-            if (number == 1){
-                std::cout << "Opció vàlida" << std::endl;
-		std::cout << vd_str << std::endl;
+            if (number == 1){ // If we have found an accurate solution
+                cout << "Accurate solution" << endl;
+		cout << vd_str << endl;
 		found = true;
 		#pragma omp cancel for
             }
             
-        } catch (const std::runtime_error& e) {
+        } catch (const runtime_error& e) {
             int thread_id = omp_get_thread_num();
-            std::cerr << "Thread " << thread_id << " Encountered an error: " << e.what() << std::endl;
+            cerr << "Thread " << thread_id << " Encountered an error: " << e.what() << endl;
         }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end_time - start_time;
+    auto end_time = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = end_time - start_time;
 
-    std::cout << "Tiempo de ejecución: " << elapsed.count() << " segundos." << std::endl;
-    std::cout << found << std::endl;
+    cout << "Execution time: " << elapsed.count() << " seconds." << endl;
+    cout << found << endl;
 
     return 0;
 }
